@@ -77,7 +77,7 @@ def create_thompson_sample():
     for ball in balls:
         show_balls.append(int(ball))
     show_balls.sort()
-    print(show_balls)
+    #print(u'生成的选号是：{}'.format(show_balls))
     # 利用随机选7
     '''
     prob_keys_list = [int(i) for i in list(probabilty.keys())]
@@ -124,35 +124,90 @@ def auto_create_ball(m_pre_data, test = False):
     return data,all_balls
 
 def check_like_two_group(data, all_balls):
+    # 收集非常规号和常规号与结果相同的个数
     last_ball = data.iloc[:,-1]
     print(u'最后一次开奖的结果：{}'.format(last_ball.to_list()))
     win = 0
-    for ball in all_balls:
-        if int(ball) in last_ball.to_list():
+    unregular_list = []
+    win_balls = last_ball.to_list()
+    for win_ball in win_balls:
+        if int(win_ball) in all_balls:
             win += 1
-    return win
+        else:
+            unregular.append(win_ball)
+    return win,unregular_list
             
 
 def get_n(n_times):
+    # 随机寻找相同结果高的取历史的量
     create_n = np.zeros(shape=(n_times,2))
     for i in np.arange(n_times):
         m = np.random.randint(1,365,1)[0]
         data, all_balls = auto_create_ball(m_pre_data = m, test = True)
-        win = check_like_two_group(data, all_balls)
+        win, unregular_list = check_like_two_group(data, all_balls)
         print(u'测试{}个数据，和目标数据相同的有中奖号{}个。'.format(m,win))
+        print(u'历史非常规号：{}'.format(unregular_list))
         create_n[i,0] = m
         create_n[i,1] = win
     max_ix = np.argmax(create_n, axis = 0)
     print(u'测试完成最好的个数的结果是{}'.format(create_n[max_ix[1],:])) # 13
+    return unregular_list 
+
+# 计算按现有概率随机生成的一组号码在最近p个历史开奖非常规号码的出现概率
+def get_unregular_probs(p, data, all_balls):
+    n,m = data.shape
+    unregular_df = pd.DataFrame({'times':[0 for i in np.arange(36)]}, index = [i+1 for i in np.arange(36)])
+    regular_df = pd.DataFrame({'times':[0 for i in np.arange(36)]}, index = [i+1 for i in np.arange(36)])
+    for i in np.arange(p):
+        last_ball = data.iloc[:,-(i+1)]
+        win_balls = last_ball.to_list()
+        #print(u'倒数实际开奖第{}次的结果：{}'.format(i,win_balls))
+        #
+        for win_ball in win_balls:
+            if int(win_ball) in all_balls:
+                regular_df.iloc[int(win_ball)-1,0] += 1
+            else:
+                unregular_df.iloc[int(win_ball)-1,0] += 1
+    #
+    regular_df.sort_values(by = ['times'], ascending=True, axis=0, inplace = True)
+    unregular_df.sort_values(by = ['times'], ascending=True, axis=0, inplace = True)
+
+    
+    out_unregular_list = unregular_df.iloc[-4:,:].index
+    show_balls = []
+    for ball in regular_df.iloc[-7:,:].index:
+        show_balls.append(int(ball))
+    for ball in unregular_df.iloc[-4:,:].index:
+        show_balls.append(int(ball))
+    rel = []
+    for i in np.arange(7):
+        ball = np.random.choice(show_balls,1)[0]
+        rel.append(ball)
+        show_balls.remove(ball)
+    rel.sort()
+    print(u'生成{}---->交换非常规{}'.format(all_balls,rel))
+    '''
+    print('\n')
+    print('++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+    print(u'显示常规号码的出现次数：')
+    print(regular_df.T)
+    print(u'显示非常规号码的出现次数：')
+    print(unregular_df.T)
+    print('++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+    '''
+    return rel
+
 
 if __name__=='__main__':
     m = input(u'请输入产生多少开奖号码：')
     for i in np.arange(int(m)-1):
         n = np.random.randint(36,365,1)[0]
         data,all_balls = auto_create_ball(m_pre_data = n, test = False)
+        get_unregular_probs(p = n, data = data, all_balls = all_balls)
     data,all_balls = auto_create_ball(m_pre_data = 305, test = False)
+    get_unregular_probs(p = 305, data = data, all_balls = all_balls)
 ##    get_n(n_times = 1000)
-
+    
 
 
 

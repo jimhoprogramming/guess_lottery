@@ -108,7 +108,7 @@ def update_new_period(period_number,pre_data_df):
     else:
         continus = True
         data_list = take_useful_message_fornew(html_origin)
-        print(data_list)
+        print(u'第{}期开奖号码是:{}'.format(str(period_number),data_list))
         pre_data_df[period_number] = data_list
     return continus, pre_data_df
 
