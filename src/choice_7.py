@@ -6,6 +6,8 @@ import os
 import datetime
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
+plt.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
 
 url_data = '../data/data.csv'
 url_beta = '../data/beta.csv'
@@ -57,6 +59,7 @@ def show_figure(regular_df, unregular_df):
                     xytext=(0, 3),  # 3 points vertical offset
                     textcoords="offset points",
                     ha='center', va='bottom')
+    ax_0.set_title(u'1-36个号的出现次数')
     # 显示非常规的出现次数
     series_unregular = unregular_df['times']
     series_unregular.sort_index(ascending=True, inplace = True)
@@ -71,7 +74,8 @@ def show_figure(regular_df, unregular_df):
                     xy=(rect.get_x() + rect.get_width() / 2, height),
                     xytext=(0, 3),  # 3 points vertical offset
                     textcoords="offset points",
-                    ha='center', va='bottom')    
+                    ha='center', va='bottom')
+    ax_1.set_title(u'排除最高六个的其他号的出现次数')
     plt.show()
     
                   
@@ -200,7 +204,7 @@ def get_n(n_times):
     return unregular_list 
 
 
-def get_unregular_probs(p, data, all_balls):
+def get_unregular_probs(p, p_near, data, all_balls, show):
     '''
     # 计算按现有概率随机生成的一组号码在最近p个历史开奖非常规号码的出现概率
     输出：rel-按7：4混合后随机选6个明天预测号；
@@ -219,47 +223,66 @@ def get_unregular_probs(p, data, all_balls):
             if int(win_ball) in all_balls:
                 regular_df.iloc[int(win_ball)-1,0] += 1
             else:
-                unregular_df.iloc[int(win_ball)-1,0] += 1
+                pass
     #
     regular_df.sort_values(by = ['times'], ascending=True, axis=0, inplace = True)
+    #
+    for i in np.arange(p_near):
+        last_ball = data.iloc[:,-(i+1)]
+        win_balls = last_ball.to_list()
+        #print(u'倒数实际开奖第{}次的结果：{}'.format(i,win_balls))
+        #
+        for win_ball in win_balls:
+            if int(win_ball) in all_balls:
+                pass
+            else:
+                unregular_df.iloc[int(win_ball)-1,0] += 1  
     unregular_df.sort_values(by = ['times'], ascending=True, axis=0, inplace = True)
-
-    
-    out_unregular_list = unregular_df.iloc[-4:,:].index
+    # top 4 for ragular
     show_balls = []
-    for ball in regular_df.iloc[-7:,:].index:
+    for ball in regular_df.iloc[-4:,:].index:
         show_balls.append(int(ball))
-    for ball in unregular_df.iloc[-4:,:].index:
-        show_balls.append(int(ball))
-    rel = []
-    for i in np.arange(7):
-        ball = np.random.choice(show_balls,1)[0]
-        rel.append(ball)
-        show_balls.remove(ball)
-    rel.sort()
-    print(u'生成{}---->交换非常规{}'.format(all_balls,rel))
-    
+    # last 3 for unregular top 7 choice 3 
+    unregular_ball = []    
+    for ball in unregular_df.iloc[-7:,:].index:
+        unregular_ball.append(int(ball))
+    ball = np.random.choice(unregular_ball,3)
+    for b in ball: 
+        show_balls.append(b)
+    show_balls.sort()    
+    print(u'生成{}---->交换非常规{}'.format(all_balls,show_balls))
     print('\n')
-    print('++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-    print(u'显示常规号码的出现次数：')
-    print(regular_df.T)
-    print(u'显示非常规号码的出现次数：')
-    print(unregular_df.T)
-    print('++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+    if show:
+        print('+++++++++++++++++++++++++++显示本注分析+++++++++++++++++')
+        print(u'本注随机计算最近----{}----次开奖'.format(p))
+        print(u'显示常规号码的出现次数：')
+        print(regular_df.T)
+        print('\n')
+        print(u'显示非常规号码的出现次数：')
+        print(unregular_df.T)
+        print('+++++++++++++++++++++++++++结束分析+++++++++++++++++++++\n\n\n')
     
-    return rel,regular_df,unregular_df
+    return show_balls,regular_df,unregular_df
 
 
 if __name__=='__main__':
-    m = input(u'请输入产生多少开奖号码：')
+    m = input(u'请输入产生多少注开奖号码：')
+    p_near = input(u'非常规的3个号码从最近多少次开奖中取：')
+    show_answer = input(u'是否观看分析过程？如果观看每注的图表窗口都需自行关闭才出现下一注的显示(y/n):')
+    show = False
+    if show_answer == 'y':
+        show = True
+    #
     for i in np.arange(int(m)-1):
         n = np.random.randint(36,365,1)[0]
         data,all_balls = auto_create_ball(m_pre_data = n, test = False)
-        rel,regular_df,unregular_df = get_unregular_probs(p = n, data = data, all_balls = all_balls)
+        rel,regular_df,unregular_df = get_unregular_probs(p = n, p_near = int(p_near), data = data, all_balls = all_balls, show = show)
+        if show:
+            show_figure(regular_df, unregular_df)
+    data,all_balls = auto_create_ball(m_pre_data = 49, test = False)
+    rel,regular_df,unregular_df = get_unregular_probs(p = 49, p_near = int(p_near), data = data, all_balls = all_balls, show = show)
+    if show:
         show_figure(regular_df, unregular_df)
-    data,all_balls = auto_create_ball(m_pre_data = 30, test = False)
-    rel,regular_df,unregular_df = get_unregular_probs(p = 30, data = data, all_balls = all_balls)
-    show_figure(regular_df, unregular_df)
 ##    get_n(n_times = 1000)
     
 
